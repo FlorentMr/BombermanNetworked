@@ -8,6 +8,7 @@ from keyboard import *
 from network import *
 import sys
 import pygame
+import socket
 
 ### python version ###
 print("python version: {}.{}.{}".format(sys.version_info[0], sys.version_info[1], sys.version_info[2]))
@@ -24,6 +25,12 @@ if len(sys.argv) != 4:
 host = sys.argv[1]
 port = int(sys.argv[2])
 nickname = sys.argv[3]
+
+connexion_avec_serveur = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+connexion_avec_serveur.bind((host, port))
+print("Connexion établie avec le serveur sur le port {}".format(port))
+
+
 
 # initialization
 pygame.display.init()
