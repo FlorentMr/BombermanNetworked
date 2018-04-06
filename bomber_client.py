@@ -27,9 +27,8 @@ port = int(sys.argv[2])
 nickname = sys.argv[3]
 
 connexion_avec_serveur = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-connexion_avec_serveur.bind((host, port))
+connexion_avec_serveur.connect((host, port))
 print("Connexion établie avec le serveur sur le port {}".format(port))
-
 
 
 # initialization
@@ -53,4 +52,5 @@ while True:
 
 # quit
 print("Game Over!")
+socket.close()
 pygame.quit()
