@@ -35,10 +35,30 @@ print("Connexion établie avec le serveur sur le port {}".format(port))
 pygame.display.init()
 pygame.font.init()
 clock = pygame.time.Clock()
+
+#####Récupération de la map via le serveur
+msg_recu =connexion_avec_serveur.recv(2048)
+mon_fichier= open("maps/map", "w")
+mon_fichier.write (msg_recu.decode())
+mon_fichier.close()
+connexion_avec_serveur.send("Map bien reçu ! Les fruits ?".encode())
 model = Model()
-model.load_map(DEFAULT_MAP)
+model.load_map("maps/map")
+msg_recu =connexion_avec_serveur.recv(100000)
+exec(msg_recu.decode())
+connexion_avec_serveur.send("Les fruits sont là ! Mon perso ?".encode())
+
+#### Récupération de notre perso et celui de l'adversaire
+perso_recu =connexion_avec_serveur.recv(100000)
+exec("model.add_character(nickname," + perso_recu.decode())
+connexion_avec_serveur.send("Perso 1 reçu".encode())
+perso_recu =connexion_avec_serveur.recv(100000)
+exec("model.add_character('Player 2'," + perso_recu.decode())
+
+
+## Lancement du visuel
 view = GraphicView(model, nickname)
-client = NetworkClientController(model, host, port, nickname)
+client = NetworkClientController(model, host, port, nickname, connexion_avec_serveur)
 kb = KeyboardController(client)
 
 # main loop
@@ -50,7 +70,10 @@ while True:
     model.tick(dt)
     view.tick(dt)
 
+    ###### Faire un select de recv qui met a jour les coup Player 2 TOUT le TEMPS
+
+
 # quit
 print("Game Over!")
-socket.close()
+connexion_avec_serveur.close()
 pygame.quit()
