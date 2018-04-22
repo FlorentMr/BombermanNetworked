@@ -9,6 +9,7 @@ from network import *
 import sys
 import pygame
 import socket
+import errno
 
 ### python version ###
 print("python version: {}.{}.{}".format(sys.version_info[0], sys.version_info[1], sys.version_info[2]))
@@ -30,11 +31,13 @@ connexion_avec_serveur = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 connexion_avec_serveur.connect((host, port))
 print("Connexion établie avec le serveur sur le port {}".format(port))
 
-
 # initialization
 pygame.display.init()
 pygame.font.init()
 clock = pygame.time.Clock()
+
+####### Envoie du pseudo au Serveur
+#connexion_avec_serveur.send(str(nickname).encode())
 
 #####Récupération de la map via le serveur
 msg_recu =connexion_avec_serveur.recv(2048)
@@ -44,16 +47,20 @@ mon_fichier.close()
 connexion_avec_serveur.send("Map bien reçu ! Les fruits ?".encode())
 model = Model()
 model.load_map("maps/map")
-msg_recu =connexion_avec_serveur.recv(100000)
+msg_recu =connexion_avec_serveur.recv(2048)
 exec(msg_recu.decode())
-connexion_avec_serveur.send("Les fruits sont là ! Mon perso ?".encode())
 
 #### Récupération de notre perso et celui de l'adversaire
-perso_recu =connexion_avec_serveur.recv(100000)
+
+connexion_avec_serveur.send(str(nickname).encode())  #### Envoie du nickname pour l'adversaire
+
+perso_recu =connexion_avec_serveur.recv(2048)
 exec("model.add_character(nickname," + perso_recu.decode())
 connexion_avec_serveur.send("Perso 1 reçu".encode())
-perso_recu =connexion_avec_serveur.recv(100000)
-exec("model.add_character('Player 2'," + perso_recu.decode())
+perso_recu =connexion_avec_serveur.recv(2048)
+exec(perso_recu.decode())
+perso_recu =connexion_avec_serveur.recv(2048)
+exec(perso_recu.decode())
 
 
 ## Lancement du visuel
@@ -69,6 +76,7 @@ while True:
     if not client.tick(dt): break
     model.tick(dt)
     view.tick(dt)
+
 
     ###### Faire un select de recv qui met a jour les coup Player 2 TOUT le TEMPS
 

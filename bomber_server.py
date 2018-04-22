@@ -8,6 +8,7 @@ from network import *
 import sys
 import pygame
 import socket, threading
+import errno
 
 ### python version ###
 print("python version: {}.{}.{}".format(sys.version_info[0], sys.version_info[1], sys.version_info[2]))
@@ -33,10 +34,12 @@ def isInConn_client(name):
 ################################################################################
 #                                 MAIN                                         #
 ################################################################################
-# parse arguments
+
+
+#### Initialisation
 if len(sys.argv) == 2:
     port = int(sys.argv[1])
-    map_file = DEFAULT_MAP
+    map_file = "maps/map1"
 elif len(sys.argv) == 3:
     port = int(sys.argv[1])
     map_file = sys.argv[2]
@@ -57,81 +60,83 @@ print ("Serveur prêt, en attente de requêtes ...")
 mySocket.listen(5)
 
 conn_client = {} # dictionnaire des connexions clients
-        # initialization
+
 pygame.display.init()
 pygame.font.init()
 clock = pygame.time.Clock()
 model = Model()
 model.load_map(map_file)
 for _ in range(10): model.add_fruit()
-server = NetworkServerController(model, port)
+pseudo=[]
+
 
         # main loop
 while True:
-            # make sure game doesn't run at more than FPS frames per second
-            # view.tick(dt)
     connexion, adresse = mySocket.accept()
+
             # Créer un nouvel objet thread pour gérer la connexion :
     th = ThreadClient(connexion)
 
             # Mémoriser la connexion dans le dictionnaire :
     it = th.getName()
-            # redonner les noms Thread-1 / Thread 2 lorsqu'ils sont dispos
+            # redonner les noms Thread-1 / Thread-2 lorsqu'ils sont dispos
     print (conn_client)
     if isInConn_client("Thread-1")==False:
         th.setName("Thread-1")
-    else :
-        if isInConn_client("Thread-2")==False:
-            th.setName("Thread-2")
+    elif isInConn_client("Thread-2")==False:
+        th.setName("Thread-2")
+    elif isInConn_client("Thread-3")==False:
+        th.setName("Thread-3")
     it= th.getName()
     conn_client[it] = connexion
 
     print ("Client {} connecté, adresse IP {}, port {}. \n".format(it, adresse[0], adresse[1]))
     model.add_character(it)
-    server = NetworkServerController(model, port)
+    server = NetworkServerController(model, port, conn_client)
     th.start()
 
-    ### Envoie de la map a tout les joueurs connecté
+
+### Envoie de la map a tout les joueurs connecté
     for i in server.model.map.array :
         for j in i :
             map_text = str(j)
-            conn_client[it].send(map_text.encode())
-        conn_client[it].send("\n".encode())
+            conn_client[it].sendall(map_text.encode())
+        conn_client[it].sendall("\n".encode())
     msg = conn_client[it].recv(2048)
     print (msg.decode())
 
-    #### Envoie des fruits
+
+#### Envoie des fruits
     for f in server.model.fruits :
-        conn_client[it].send(("model.add_fruit(" + str(f.kind) + "," + str(f.pos) + ")" + "\n" ).encode())
-    msg = conn_client[it].recv(2048)
-    print (msg.decode())
+        conn_client[it].sendall(("model.add_fruit(" + str(f.kind) + "," + str(f.pos) + ")" + "\n" ).encode())
 
+    pseudo.append(conn_client[it].recv(2048).decode())
 
-    ## Envoie des personnages aux joueurs
+#### Envoie des personnages aux joueurs
     if (it=="Thread-1"):
-        conn_client[it].send((" False," + str(server.model.characters[0].kind)+ "," + str(server.model.characters[0].pos) + ")" + "\n" ).encode())
+        conn_client[it].sendall((" True," + str(server.model.characters[0].kind)+ "," + str(server.model.characters[0].pos) + ")" + "\n" ).encode())
         msg = conn_client[it].recv(2048)
         print (msg.decode())
-    if (it=="Thread-2") :
-        conn_client[it].send((" False," + str(server.model.characters[1].kind)+ "," + str(server.model.characters[1].pos) + ")" + "\n" ).encode())
+    elif (it=="Thread-2") :
+        conn_client[it].sendall((" True," + str(server.model.characters[1].kind)+ "," + str(server.model.characters[1].pos) + ")" + "\n" ).encode())
         msg = conn_client[it].recv(2048)
         print (msg.decode())
-        conn_client["Thread-1"].send((" False," + str(server.model.characters[1].kind)+ "," + str(server.model.characters[1].pos) + ")" + "\n" ).encode())
-        conn_client[it].send((" False," + str(server.model.characters[0].kind)+ "," + str(server.model.characters[0].pos) + ")" + "\n" ).encode())
+        conn_client["Thread-1"].sendall(("model.add_character('" + str(pseudo[1]) + "', False," + str(server.model.characters[1].kind)+ "," + str(server.model.characters[1].pos) + ")" + "\n" ).encode())
+        conn_client[it].sendall(("model.add_character('" + str(pseudo[0]) +  "', False," + str(server.model.characters[0].kind)+ "," + str(server.model.characters[0].pos) + ")" + "\n" ).encode())
+    elif (it=="Thread-3"):
+        conn_client[it].sendall((" True," + str(server.model.characters[2].kind)+ "," + str(server.model.characters[2].pos) + ")" + "\n" ).encode())
+        msg = conn_client[it].recv(2048)
+        print (msg.decode())
+        conn_client["Thread-1"].sendall(("model.add_character('" + str(pseudo[2]) + "', False," + str(server.model.characters[2].kind)+ "," + str(server.model.characters[2].pos)+ ")" + "\n" ).encode())
+        conn_client["Thread-2"].sendall(("model.add_character('" + str(pseudo[2]) + "', False," + str(server.model.characters[2].kind)+ "," + str(server.model.characters[2].pos)+ ")" + "\n" ).encode())
+        conn_client[it].sendall(("model.add_character('" + str(pseudo[0]) +  "', False," + str(server.model.characters[0].kind)+ "," + str(server.model.characters[0].pos) + ")" + "\n" ).encode())
+        conn_client[it].sendall(("model.add_character('" + str(pseudo[1]) +  "', False," + str(server.model.characters[1].kind)+ "," + str(server.model.characters[1].pos) + ")" + "\n" ).encode())
 
-        ##### Transmission des coups des joueurs (En cours de création... marche que dans un sens)
+    ##### Transmission des coups des joueurs
         while True :
             dt = clock.tick(FPS)
             server.tick(dt)
             model.tick(dt)
-            if (it=="Thread-1"):
-                msg = conn_client["Thread-1"].recv(2048)
-                print(msg)
-                conn_client["Thread-2"].send(msg)
-            if (it=="Thread-2"):
-                msg = conn_client["Thread-2"].recv(2048)
-                print(msg)
-                conn_client["Thread-1"].send(msg)
-                    # quit
+
 print("Game Over!")
 pygame.quit()
