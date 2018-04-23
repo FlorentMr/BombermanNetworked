@@ -68,6 +68,7 @@ model = Model()
 model.load_map(map_file)
 for _ in range(10): model.add_fruit()
 pseudo=[]
+skin=[]
 
 
         # main loop
@@ -91,10 +92,8 @@ while True:
     conn_client[it] = connexion
 
     print ("Client {} connecté, adresse IP {}, port {}. \n".format(it, adresse[0], adresse[1]))
-    model.add_character(it)
-    server = NetworkServerController(model, port, conn_client)
+    server = NetworkServerController(model, port, conn_client, 0)
     th.start()
-
 
 ### Envoie de la map a tout les joueurs connecté
     for i in server.model.map.array :
@@ -102,28 +101,45 @@ while True:
             map_text = str(j)
             conn_client[it].sendall(map_text.encode())
         conn_client[it].sendall("\n".encode())
-    msg = conn_client[it].recv(2048)
-    print (msg.decode())
+        ACK= conn_client[it].recv(1024)
+        print (ACK)
+    conn_client[it].sendall("Stop ".encode())
+    ACK = conn_client[it].recv(2048)
+    conn_client[it].recv(2048)
 
 
 #### Envoie des fruits
     for f in server.model.fruits :
         conn_client[it].sendall(("model.add_fruit(" + str(f.kind) + "," + str(f.pos) + ")" + "\n" ).encode())
-
     pseudo.append(conn_client[it].recv(2048).decode())
+    msg_skin = conn_client[it].recv(2048).decode()
+    if (msg_skin=="dk"):
+        skin.append(0)
+    if (msg_skin=="zelda"):
+        skin.append(1)
+    if (msg_skin=="batman"):
+        skin.append(2)
+    if (it=="Thread-1"):
+        model.add_character(it, False, skin[0])
+    if (it=="Thread-2"):
+        model.add_character(it, False, skin[1])
+    if (it=="Thread-3"):
+        model.add_character(it, False, skin[2])
+    nbPlayer=int(conn_client[it].recv(2048).decode())
+    server = NetworkServerController(model, port, conn_client, nbPlayer)
 
 #### Envoie des personnages aux joueurs
     if (it=="Thread-1"):
         conn_client[it].sendall((" True," + str(server.model.characters[0].kind)+ "," + str(server.model.characters[0].pos) + ")" + "\n" ).encode())
         msg = conn_client[it].recv(2048)
         print (msg.decode())
-    elif (it=="Thread-2") :
+    if (it=="Thread-2") :
         conn_client[it].sendall((" True," + str(server.model.characters[1].kind)+ "," + str(server.model.characters[1].pos) + ")" + "\n" ).encode())
         msg = conn_client[it].recv(2048)
         print (msg.decode())
         conn_client["Thread-1"].sendall(("model.add_character('" + str(pseudo[1]) + "', False," + str(server.model.characters[1].kind)+ "," + str(server.model.characters[1].pos) + ")" + "\n" ).encode())
         conn_client[it].sendall(("model.add_character('" + str(pseudo[0]) +  "', False," + str(server.model.characters[0].kind)+ "," + str(server.model.characters[0].pos) + ")" + "\n" ).encode())
-    elif (it=="Thread-3"):
+    if (it=="Thread-3"):
         conn_client[it].sendall((" True," + str(server.model.characters[2].kind)+ "," + str(server.model.characters[2].pos) + ")" + "\n" ).encode())
         msg = conn_client[it].recv(2048)
         print (msg.decode())
@@ -133,6 +149,7 @@ while True:
         conn_client[it].sendall(("model.add_character('" + str(pseudo[1]) +  "', False," + str(server.model.characters[1].kind)+ "," + str(server.model.characters[1].pos) + ")" + "\n" ).encode())
 
     ##### Transmission des coups des joueurs
+    if (len(conn_client)==nbPlayer):
         while True :
             dt = clock.tick(FPS)
             server.tick(dt)

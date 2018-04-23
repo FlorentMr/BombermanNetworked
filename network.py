@@ -12,21 +12,24 @@ import errno
 
 class NetworkServerController:
 
-    def __init__(self, model, port, conn_client):
+    def __init__(self, model, port, conn_client, nbPlayer):
         self.model = model
         self.port = port
         self.conn_client = conn_client
+        self.nbPlayer = nbPlayer
 
     # time event
 
     def tick(self, dt):
         self.conn_client["Thread-1"].setblocking(False)
         self.conn_client["Thread-2"].setblocking(False)
-        self.conn_client["Thread-3"].setblocking(False)
+        if (self.nbPlayer>2):
+            self.conn_client["Thread-3"].setblocking(False)
         try :
             msg = self.conn_client["Thread-1"].recv(2048)
             self.conn_client["Thread-2"].send(msg)
-            self.conn_client["Thread-3"].send(msg)
+            if (self.nbPlayer>2):
+                self.conn_client["Thread-3"].send(msg)
         except socket.error as e:
             if e.args[0] == errno.EWOULDBLOCK:
                 None
@@ -36,23 +39,24 @@ class NetworkServerController:
         try :
             msg = self.conn_client["Thread-2"].recv(2048)
             self.conn_client["Thread-1"].send(msg)
-            self.conn_client["Thread-3"].send(msg)
-            
+            if (self.nbPlayer>2):
+                self.conn_client["Thread-3"].send(msg)
+
         except socket.error as e:
             if e.args[0] == errno.EWOULDBLOCK:
                 None
             else :
                 print("error:", e)
-
-        try :
-            msg = self.conn_client["Thread-3"].recv(2048)
-            self.conn_client["Thread-2"].send(msg)
-            self.conn_client["Thread-1"].send(msg)
-        except socket.error as e:
-            if e.args[0] == errno.EWOULDBLOCK:
-                return True
-            else :
-                print("error:", e)
+        if (self.nbPlayer>2):
+            try :
+                msg = self.conn_client["Thread-3"].recv(2048)
+                self.conn_client["Thread-2"].send(msg)
+                self.conn_client["Thread-1"].send(msg)
+            except socket.error as e:
+                if e.args[0] == errno.EWOULDBLOCK:
+                    return True
+                else :
+                    print("error:", e)
                 # quit
         return True
 
@@ -62,12 +66,13 @@ class NetworkServerController:
 
 class NetworkClientController:
 
-    def __init__(self, model, host, port, nickname, socket):
+    def __init__(self, model, host, port, nickname, socket, nbPlayer):
         self.model = model
         self.host = host
         self.port = port
         self.nickname = nickname
         self.socket = socket
+        self.nbPlayer = nbPlayer
 
     # keyboard events
 
