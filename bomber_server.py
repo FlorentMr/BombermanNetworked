@@ -92,7 +92,7 @@ while True:
     conn_client[it] = connexion
 
     print ("Client {} connecté, adresse IP {}, port {}. \n".format(it, adresse[0], adresse[1]))
-    server = NetworkServerController(model, port, conn_client, 0)
+    server = NetworkServerController(model, port, conn_client, 0, pseudo)
     th.start()
 
 ### Envoie de la map a tout les joueurs connecté
@@ -101,18 +101,19 @@ while True:
             map_text = str(j)
             conn_client[it].sendall(map_text.encode())
         conn_client[it].sendall("\n".encode())
-        ACK= conn_client[it].recv(1024)
-        print (ACK)
-    conn_client[it].sendall("Stop ".encode())
-    ACK = conn_client[it].recv(2048)
-    conn_client[it].recv(2048)
+    ACK=conn_client[it].recv(1000)
+    print (ACK.decode())
 
 
 #### Envoie des fruits
     for f in server.model.fruits :
         conn_client[it].sendall(("model.add_fruit(" + str(f.kind) + "," + str(f.pos) + ")" + "\n" ).encode())
-    pseudo.append(conn_client[it].recv(2048).decode())
-    msg_skin = conn_client[it].recv(2048).decode()
+    pseudo.append(conn_client[it].recv(1000).decode())
+    conn_client[it].sendall(b"ACK")
+    print(pseudo[0])
+    msg_skin = conn_client[it].recv(1000).decode()
+    print(msg_skin)
+    conn_client[it].sendall(b"ACK")
     if (msg_skin=="dk"):
         skin.append(0)
     if (msg_skin=="zelda"):
@@ -126,7 +127,8 @@ while True:
     if (it=="Thread-3"):
         model.add_character(it, False, skin[2])
     nbPlayer=int(conn_client[it].recv(2048).decode())
-    server = NetworkServerController(model, port, conn_client, nbPlayer)
+    conn_client[it].sendall(b"ACK")
+    server = NetworkServerController(model, port, conn_client, nbPlayer, pseudo)
 
 #### Envoie des personnages aux joueurs
     if (it=="Thread-1"):
@@ -150,10 +152,12 @@ while True:
 
     ##### Transmission des coups des joueurs
     if (len(conn_client)==nbPlayer):
-        while True :
+        game=True
+        while game :
             dt = clock.tick(FPS)
-            server.tick(dt)
+            game=server.tick(dt)
             model.tick(dt)
+        break
 
 print("Game Over!")
 pygame.quit()

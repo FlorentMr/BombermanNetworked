@@ -244,8 +244,7 @@ class Model:
     def drop_bomb(self, nickname):
         character = self.look(nickname)
         if not character:
-            print("Error: nickname \"{}\" not found!".format(nickname))
-            sys.exit(1)
+            return False
         if character.disarmed == 0:
             self.bombs.append(Bomb(self.map, character.pos))
             character.disarmed = DISARMED

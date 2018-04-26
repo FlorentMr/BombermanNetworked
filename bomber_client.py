@@ -20,14 +20,17 @@ print("pygame version: ", pygame.version.ver)
 ################################################################################
 
 # parse arguments
-if len(sys.argv) != 6:
+if (len(sys.argv) != 6 and len(sys.argv) != 5) :
     print("Usage: {} host port nickname".format(sys.argv[0]))
     sys.exit()
 host = sys.argv[1]
 port = int(sys.argv[2])
 nickname = sys.argv[3]
 nbPlayer = int(sys.argv[4])
-skin = sys.argv[5]
+if (len(sys.argv)==5):
+    skin = "dk"  ### DK par défaut
+else :
+    skin = sys.argv[5]
 
 connexion_avec_serveur = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 connexion_avec_serveur.connect((host, port))
@@ -41,18 +44,13 @@ clock = pygame.time.Clock()
 ####### Envoie du pseudo au Serveur
 
 #####Récupération de la map via le serveur
-msg_recu =connexion_avec_serveur.recv(2048)
 mon_fichier= open("maps/map", "w")
-while (msg_recu != b"Stop"):
-    if (msg_recu == b"Stop "):
-        connexion_avec_serveur.sendall(b"Map recu")
-        break
-    mon_fichier.write (msg_recu.decode())
-    connexion_avec_serveur.sendall(b"ACK")
-    msg_recu =connexion_avec_serveur.recv(2048)
+msg_recu =connexion_avec_serveur.recv(2048)
+mon_fichier.write (msg_recu.decode())
+connexion_avec_serveur.sendall(b"ACK")
 mon_fichier.close()
 
-#connexion_avec_serveur.send("Map bien reçu ! Les fruits ?".encode())
+
 model = Model()
 model.load_map("maps/map")
 msg_recu =connexion_avec_serveur.recv(2048)
@@ -61,15 +59,17 @@ exec(msg_recu.decode())
 #### Récupération de notre perso et celui de l'adversaire
 
 connexion_avec_serveur.send(str(nickname).encode())  #### Envoie du nickname pour l'adversaire
-connexion_avec_serveur.send(str(skin).encode())
-connexion_avec_serveur.send(str(nbPlayer).encode())
-
+ACK = connexion_avec_serveur.recv(1000)
+connexion_avec_serveur.send(str(skin).encode())     ### Envoie de son choix de skin au serveur
+ACK = connexion_avec_serveur.recv(1000)
+connexion_avec_serveur.send(str(nbPlayer).encode())  ### Envoie du nombre de joueur que l'on veut dans sa game
+ACK = connexion_avec_serveur.recv(1000)
 perso_recu =connexion_avec_serveur.recv(2048)
 exec("model.add_character(nickname," + perso_recu.decode())
 connexion_avec_serveur.send("Perso 1 reçu".encode())
 perso_recu =connexion_avec_serveur.recv(2048)
 exec(perso_recu.decode())
-if (nbPlayer>2):
+if (nbPlayer>2):                                    ### Réception du perso Player 3 si il y en a un
     perso_recu =connexion_avec_serveur.recv(2048)
     exec(perso_recu.decode())
 
@@ -87,11 +87,6 @@ while True:
     if not client.tick(dt): break
     model.tick(dt)
     view.tick(dt)
-
-
-    ###### Faire un select de recv qui met a jour les coup Player 2 TOUT le TEMPS
-
-
 # quit
 print("Game Over!")
 connexion_avec_serveur.close()
