@@ -202,8 +202,7 @@ class Model:
     def kill_character(self, nickname):
         character = self.look(nickname)
         if not character:
-            print("Error: nickname {} not found!".format(nickname))
-            sys.exit(1)
+            return False
         self.characters.remove(character)
         if self.player == character: self.player = None
         print("=> kill \"{}\"".format(nickname))

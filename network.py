@@ -62,7 +62,6 @@ class NetworkServerController:
                 return True
 
     def tick(self, dt):
-
         if self.time_to_dropBomb >= 0:
             self.time_to_dropBomb -= dt
             self.countdown_bomb = int(self.time_to_dropBomb / 1000)
